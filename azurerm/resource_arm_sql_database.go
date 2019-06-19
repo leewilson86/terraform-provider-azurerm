@@ -161,6 +161,11 @@ func resourceArmSqlDatabase() *schema.Resource {
 				Computed: true,
 			},
 
+			"zone_redundant": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+
 			"requested_service_objective_id": {
 				Type:         schema.TypeString,
 				Optional:     true,
@@ -379,6 +384,10 @@ func resourceArmSqlDatabaseCreateUpdate(d *schema.ResourceData, meta interface{}
 		properties.DatabaseProperties.MaxSizeBytes = utils.String(maxSizeBytes)
 	}
 
+	if v, ok := d.GetOkExists("zone_redundant"); ok {
+		properties.DatabaseProperties.ZoneRedundant = utils.Bool(v.(bool))
+	}
+
 	if v, ok := d.GetOk("source_database_deletion_date"); ok {
 		sourceDatabaseDeletionString := v.(string)
 		sourceDatabaseDeletionDate, err2 := date.ParseTime(time.RFC3339, sourceDatabaseDeletionString)
@@ -530,6 +539,7 @@ func resourceArmSqlDatabaseRead(d *schema.ResourceData, meta interface{}) error 
 		d.Set("edition", string(props.Edition))
 		d.Set("elastic_pool_name", props.ElasticPoolName)
 		d.Set("max_size_bytes", props.MaxSizeBytes)
+		d.Set("zone_redundant", props.ZoneRedundant)
 		d.Set("requested_service_objective_name", string(props.RequestedServiceObjectiveName))
 
 		if cd := props.CreationDate; cd != nil {

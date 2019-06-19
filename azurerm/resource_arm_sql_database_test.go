@@ -328,6 +328,36 @@ func TestAccAzureRMSqlDatabase_readScale(t *testing.T) {
 	})
 }
 
+func TestAccAzureRMSqlDatabase_zoneRedundant(t *testing.T) {
+	resourceName := "azurerm_sql_database.test"
+	ri := tf.AccRandTimeInt()
+	location := testLocation()
+	preConfig := testAccAzureRMSqlDatabase_zoneRedundant(ri, location, true)
+	postConfig := testAccAzureRMSqlDatabase_zoneRedundant(ri, location, false)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testCheckAzureRMSqlDatabaseDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: preConfig,
+				Check: resource.ComposeTestCheckFunc(
+					testCheckAzureRMSqlDatabaseExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "zone_redundant", "true"),
+				),
+			},
+			{
+				Config: postConfig,
+				Check: resource.ComposeTestCheckFunc(
+					testCheckAzureRMSqlDatabaseExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "zone_redundant", "false"),
+				),
+			},
+		},
+	})
+}
+
 func testCheckAzureRMSqlDatabaseExists(resourceName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 
@@ -847,4 +877,33 @@ resource "azurerm_sql_database" "test" {
   read_scale		  = %t
 }
 `, rInt, location, rInt, rInt, readScale)
+}
+
+func testAccAzureRMSqlDatabase_zoneRedundant(rInt int, location string, zoneRedundant bool) string {
+	return fmt.Sprintf(`
+resource "azurerm_resource_group" "test" {
+  name     = "zoneredundanttestRG-%d"
+  location = "%s"
+}
+
+resource "azurerm_sql_server" "test" {
+  name                         = "zoneredundanttestsqlserver%d"
+  resource_group_name          = "${azurerm_resource_group.test.name}"
+  location                     = "${azurerm_resource_group.test.location}"
+  version                      = "12.0"
+  administrator_login          = "mradministrator"
+  administrator_login_password = "thisIsDog11"
+}
+
+resource "azurerm_sql_database" "test" {
+  name                = "zoneredundanttestdb%d"
+  resource_group_name = "${azurerm_resource_group.test.name}"
+  server_name         = "${azurerm_sql_server.test.name}"
+  location            = "${azurerm_resource_group.test.location}"
+  edition             = "Premium"
+  collation           = "SQL_Latin1_General_CP1_CI_AS"
+  max_size_bytes      = "1073741824"
+  zone_redundant	  = %t
+}
+`, rInt, location, rInt, rInt, zoneRedundant)
 }
